@@ -37,8 +37,8 @@ def send_response(message):
     }
 
 
-def bookConf(room, date, time):
-    print("bookConf room")
+def bookConf(mname, date, time):
+    print("bookConf meeting")
 
     meeting = {
 	    'summary': 'Marvell Hackathon',
@@ -51,17 +51,16 @@ def bookConf(room, date, time):
 		    'dateTime': '2017-01-23T04:00:00-07:00',
 	    },
     }
-    meeting['summary'] = 'Marvell Conference Room '+ room
-    meeting['start']['dateTime'] = date + 'T' + time + ':00:00-07:00'
-    meeting['end']['dateTime'] = date + 'T' + time + ':30:00-07:00'
+    meeting['summary'] = mname
+    meeting['start']['dateTime'] = date + 'T' + time + ':00:00+05:30'
+    meeting['end']['dateTime'] = date + 'T' + time + ':30:00+05:30'
 
     credentials = client.OAuth2Credentials.from_json(credentials1)
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
 
-    meeting = service.events().insert(calendarId='primary', body=meeting).execute()
-
-    now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+    #now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+    now = meeting['start']['dateTime']
     print('Getting the upcoming event')
     eventsResult = service.events().list(
         calendarId='primary', timeMin=now, maxResults=1, singleEvents=True,
@@ -69,10 +68,11 @@ def bookConf(room, date, time):
     events = eventsResult.get('items', [])
 
     if not events:
-        message = 'No upcoming events found'
-    for event in events:
-        start = event['start'].get('dateTime', event['start'].get('date'))
-	message = 'Booked ' + event['summary'] + ' for' + time
+        meeting = service.events().insert(calendarId='primary', body=meeting).execute()
+        #start = event['start'].get('dateTime', event['start'].get('date'))
+        message = 'Scheduled ' + mname + ' As per your request'
+    else:
+	message = 'There is already a meeting scheduled for given time'
 
     return message
 
@@ -192,10 +192,10 @@ def lambda_handler(event, context):
 
     elif intent == "BookConf":
 	try:
-	    room = event["request"]["intent"]["slots"]["room"]["value"]
+	    meeting = event["request"]["intent"]["slots"]["meeting"]["value"]
 	    date = event["request"]["intent"]["slots"]["date"]["value"]
 	    time = event["request"]["intent"]["slots"]["time"]["value"]
-            message = bookConf(room, date, time)
+            message = bookConf(meeting, date, time)
         except KeyError:
             message = error_msg
 
