@@ -37,7 +37,7 @@ def send_response(message):
     }
 
 
-def bookConf(mname, date, time):
+def bookConf(mname, date, stime, etime):
     print("bookConf meeting")
 
     meeting = {
@@ -52,18 +52,19 @@ def bookConf(mname, date, time):
 	    },
     }
     meeting['summary'] = mname
-    meeting['start']['dateTime'] = date + 'T' + time + ':00:00+05:30'
-    meeting['end']['dateTime'] = date + 'T' + time + ':30:00+05:30'
+    meeting['start']['dateTime'] = date + 'T' + stime + ':00+05:30'
+    meeting['end']['dateTime'] = date + 'T' + etime + ':00+05:30'
 
     credentials = client.OAuth2Credentials.from_json(credentials1)
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
 
     #now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-    now = meeting['start']['dateTime']
+    mstart = meeting['start']['dateTime']
+    mend = meeting['end']['dateTime']
     print('Getting the upcoming event')
     eventsResult = service.events().list(
-        calendarId='primary', timeMin=now, maxResults=1, singleEvents=True,
+        calendarId='primary', timeMin=mstart, timeMax=mend, maxResults=1, singleEvents=True,
         orderBy='startTime').execute()
     events = eventsResult.get('items', [])
 
@@ -194,8 +195,9 @@ def lambda_handler(event, context):
 	try:
 	    meeting = event["request"]["intent"]["slots"]["meeting"]["value"]
 	    date = event["request"]["intent"]["slots"]["date"]["value"]
-	    time = event["request"]["intent"]["slots"]["time"]["value"]
-            message = bookConf(meeting, date, time)
+	    stime = event["request"]["intent"]["slots"]["stime"]["value"]
+	    etime = event["request"]["intent"]["slots"]["etime"]["value"]
+            message = bookConf(meeting, date, stime, etime)
         except KeyError:
             message = error_msg
 
