@@ -1,12 +1,14 @@
 from __future__ import print_function
 import httplib2
 import os
+import json
+import boto3
+import datetime
 
 from apiclient import discovery
 from oauth2client import client
 from oauth2client import tools
 
-import datetime
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/calendar-python-quickstart.json
@@ -74,15 +76,131 @@ def bookConf(room, date, time):
 
     return message
 
+def send_response(message):
+    return {
+        "version": "1.0",
+        "sessionAttributes": {},
+        "response": {
+            "outputSpeech": {
+                "type": "PlainText",
+                "text": message
+            },
+            "card": {
+                "type": "Simple",
+                "title": "SessionSpeechlet - Welcome",
+                "content": message
+            }
+        }
+    }
+
+
+def handleLight(value, method):
+    client = boto3.client('iot-data', region_name='us-east-1')
+    if method == 0:
+        response = client.get_thing_shadow(thingName = 'panel_light')
+        body = json.loads(response["payload"].read())
+        print("Response is: %s" % body)
+        message = "The light is %s" % body["state"]["reported"]["state"]
+    else:
+        if value == "on" or value == "off":
+            message = "Turning %s light" % value
+            data = "{\"state\" : { \"desired\" : { \"state\" : \"%s\" }}}" % value
+            client.update_thing_shadow(thingName = 'panel_light', payload = data)
+        else:
+            message = error_msg
+    return message
+
+def handleConnect(person):
+    dict = {'Mahavir': 'mahavir.coep@gmail.com', 'Amit': 'amitsheth90@gmail.com', 'Rishi': 'dhayagudehrishikesh@gmail.com'}
+    if person == "Mahavir" or person == "Amit" or person == "Rishi":
+        sns = boto3.client('sns')
+        sns.publish(
+            TopicArn = 'arn:aws:sns:us-east-1:815345597136:contactDetails',
+            Message='Thank you',
+            Subject="Please contact %s (%s)" % (person, dict[person]),
+            MessageStructure='string',
+            MessageAttributes={
+                'string': {
+                    'DataType': 'String',
+                    'StringValue': 'string',
+                }
+            }
+        )
+        message = "Okay. Notified the concerned person"
+    else:
+        message = "Sorry. Unknown user '%s'" % person
+    return message
+    print("HandleConnect")
+    
+def handleInventory(item):
+    print("Item is: ", item)
+    if item == "water" or item == "milk" or item == "snacks" or item == "biscuits":
+        sns = boto3.client('sns')
+        sns.publish(
+            TopicArn = 'arn:aws:sns:us-east-1:815345597136:contactDetails',
+            Message='Looks like the stock for %s is about to get over. Please check and refill or reorder.' % item,
+            Subject="[INVENTORY] Please check %s " % item,
+            MessageStructure='string',
+            MessageAttributes={
+                'string': {
+                    'DataType': 'String',
+                    'StringValue': 'string',
+                }
+            }
+        )
+        message = "Okay. Notified the inventory unit"
+    else:
+        message = "Sorry. The item %s is not in the inventory" % item
+    return message
+
+def handleShipments():
+    shipment = 2
+    if shipment != 0:
+        message = "You have %s new shipments" % shipment
+    else:
+        message = "You have no new shipments"
+    return message
+
 def lambda_handler(event, context):
     #print("Received event: " + json.dumps(event, indent=2))
     print("Function is: ", event["request"]["intent"]["name"])
     intent = event["request"]["intent"]["name"]
-    if intent == "BookConf":
-	room = event["request"]["intent"]["slots"]["room"]["value"]
-	date = event["request"]["intent"]["slots"]["date"]["value"]
-	time = event["request"]["intent"]["slots"]["time"]["value"]
-        message = bookConf(room, date, time)
+    if intent == "getState":
+        message = handleLight("null", 0)
+    elif intent == "setState":
+        try:
+            val = event["request"]["intent"]["slots"]["state"]["value"]
+            message = handleLight(val, 1)
+        except KeyError:
+            message = error_message
+    elif intent == "connect":
+        try:
+            val = event["request"]["intent"]["slots"]["person"]["value"]
+            message = handleConnect(val)
+        except KeyError:
+            message = error_msg
+            
+    elif intent == "manageInventory":
+        try:
+            val = event["request"]["intent"]["slots"]["item"]["value"]
+            message = handleInventory(val)
+        except KeyError:
+            message = error_msg
+            
+    elif intent == "getShipments":
+        message = handleShipments()
+
+    elif intent == "BookConf":
+	try:
+	    room = event["request"]["intent"]["slots"]["room"]["value"]
+	    date = event["request"]["intent"]["slots"]["date"]["value"]
+	    time = event["request"]["intent"]["slots"]["time"]["value"]
+            message = bookConf(room, date, time)
+        except KeyError:
+            message = error_msg
+
+    elif intent == "CancelIntent":
+        message = "In Cancel Intent"
     else:
         message = error_msg
     return send_response(message)
