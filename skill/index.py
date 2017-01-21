@@ -172,7 +172,7 @@ def lambda_handler(event, context):
             val = event["request"]["intent"]["slots"]["state"]["value"]
             message = handleLight(val, 1)
         except KeyError:
-            message = error_message
+            message = error_msg
     elif intent == "connect":
         try:
             val = event["request"]["intent"]["slots"]["person"]["value"]
