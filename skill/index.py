@@ -4,6 +4,7 @@ import os
 import json
 import boto3
 import datetime
+import re
 
 from apiclient import discovery
 from oauth2client import client
@@ -20,6 +21,7 @@ error_msg = "Sorry. I could not get that"
 print('Loading function')
 
 USER = "Amit Jain"
+multiplier = 1
 
 def send_response_interactive(message, sessionAttr):
     if sessionAttr == "{}":
@@ -61,6 +63,48 @@ def send_response(message):
             }
         }
     }
+
+def scheduleCoffeeMakerDur(val, duration):
+    # TODO Get current status first if busy or idle
+    client = boto3.client('iot-data', region_name='us-east-1')
+    dur_in_secs = duration["value"]
+    matchObj = re.match(r'PT([0-9]+)([a-zA-Z]+)', dur_in_secs, re.M|re.I)
+    print("%s %s" % (matchObj.group(1), matchObj.group(2)))
+    timeUnit = matchObj.group(2)
+    timeNo = matchObj.group(1)
+    if (timeUnit == 'S'):
+        multiplier = 1
+        if (int(timeNo) > 1):
+            timeUnit = "seconds"
+        else:
+            timeUnit = "second"
+    elif (timeUnit == 'M'):
+        multiplier = 60
+        if (int(timeNo) > 1):
+            timeUnit = "Minutes"
+        else:
+            timeUnit = "Minute"
+    elif (timeUnit == 'H'):
+        multiplier = 3600
+        if (int(timeNo) > 1):
+            timeUnit = "Hours"
+        else:
+            timeUnit = "Hour"
+    dur_in_secs = int(timeNo) * int(multiplier)
+    data = '{"state": {"desired": {"state": "%s","duration": %d,"status": "busy","fromTime": 0,"toTime": 0,"tillTime": 0}}}' %(val, int(dur_in_secs))
+    client.update_thing_shadow(thingName = 'coffee_maker', payload = data)
+    message = 'keeping coffee maker %s for %s %s' % (val, timeNo, timeUnit)
+    return message
+    
+def scheduleCoffeeMakerSpan(val, fromTime, toTime):
+    print("fromTime %s and toTime %s" % (fromTime, toTime))
+    message = 'Will keep coffee maker %s for specified time period' % val
+    return message
+    
+def scheduleCoffeeMakerPeriod(val, tillTime):
+    message = 'Will keep coffee maker %s till specified time' % val
+    print("tillTime %s" % tillTime)
+    return message
 
 
 def bookConf(mname, date, stime, etime):
@@ -259,6 +303,22 @@ def lambda_handler(event, context):
 	    stime = event["request"]["intent"]["slots"]["stime"]["value"]
 	    etime = event["request"]["intent"]["slots"]["etime"]["value"]
             message = bookConf(meeting, date, stime, etime)
+        except KeyError:
+            message = error_msg
+
+    elif intent == "schedule":
+        try:
+            val = event["request"]["intent"]["slots"]["state"]["value"]
+            if "value" in event["request"]["intent"]["slots"]["duration"]:
+                message = scheduleCoffeeMakerDur(val, event["request"]["intent"]["slots"]["duration"])
+                
+            elif "value" in event["request"]["intent"]["slots"]["fromTime"]:
+                message = scheduleCoffeeMakerSpan(val, event["request"]["intent"]["slots"]["fromTime"]["value"],
+                                        event["request"]["intent"]["slots"]["toTime"]["value"])
+                                        
+            elif "value" in event["request"]["intent"]["slots"]["tillTime"]:
+                message = scheduleCoffeeMakerPeriod(val, event["request"]["intent"]["slots"]["tillTime"]["value"])
+            
         except KeyError:
             message = error_msg
 
