@@ -19,6 +19,32 @@ error_msg = "Sorry. I could not get that"
 
 print('Loading function')
 
+USER = "Amit Jain"
+
+def send_response_interactive(message, sessionAttr):
+    if sessionAttr == "{}":
+        endSession = "true"
+    else:
+        endSession = "false"
+    attr = eval(sessionAttr)
+    print("Session attr %s and endSession %s" % (sessionAttr, endSession) )
+    return {
+        "version": "1.0",
+        "response": {
+            "outputSpeech": {
+                "type": "PlainText",
+                "text": message
+            },
+            "shouldEndSession": endSession,
+            "card": {
+                "type": "Simple",
+                "title": "SessionSpeechlet - Welcome",
+                "content": message
+            }
+        },
+        "sessionAttributes": attr
+    }
+
 def send_response(message):
     return {
         "version": "1.0",
@@ -76,24 +102,6 @@ def bookConf(mname, date, stime, etime):
 	message = 'There is already a meeting scheduled for given time'
 
     return message
-
-def send_response(message):
-    return {
-        "version": "1.0",
-        "sessionAttributes": {},
-        "response": {
-            "outputSpeech": {
-                "type": "PlainText",
-                "text": message
-            },
-            "card": {
-                "type": "Simple",
-                "title": "SessionSpeechlet - Welcome",
-                "content": message
-            }
-        }
-    }
-
 
 def handleLight(value, method):
     client = boto3.client('iot-data', region_name='us-east-1')
@@ -163,17 +171,70 @@ def handleShipments():
     return message
 
 def lambda_handler(event, context):
-    #print("Received event: " + json.dumps(event, indent=2))
+    leaveDateFound = 0
+    leavePeriodFound = 0
+    sessionAttr = "{}"
+    leaveDate = "{}"
+    leavePeriod = "{}"
     print("Function is: ", event["request"]["intent"]["name"])
     intent = event["request"]["intent"]["name"]
-    if intent == "getState":
+    print("Keys: %s" % event.keys())
+
+    if intent == "leaveApply":
+    	if 'attributes' in event['session']:
+        	if 'leaveDate' in event['session']['attributes']:
+            		leaveDate = event['session']['attributes']['leaveDate']
+            		leaveDateFound = 1
+        	if 'leavePeriod' in event['session']['attributes']:
+            		leavePeriod = event['session']['attributes']['leavePeriod']
+            		leavePeriodFound = 1
+
+	if leaveDate == "{}":
+        	if 'value' in event['request']['intent']['slots']['leaveDate']:
+            		leaveDate = event['request']['intent']['slots']['leaveDate']['value']
+            		leaveDateFound = 1
+    	if leavePeriod == "{}":
+        	if 'value' in event['request']['intent']['slots']['leavePeriod']:
+            		leavePeriod = event['request']['intent']['slots']['leavePeriod']['value']
+            		leavePeriodFound = 1
+    	if leaveDateFound == 0:
+        	message = "What date"
+        	sessionAttr = '{"intentSequence": "leaveApply"}'
+    	else:
+        	if leavePeriodFound == 0:
+            		message = "For how many days"
+            		sessionAttr = '{"intentSequence": "leaveApply", "leaveDate": "%s"}' % leaveDate
+            		my_type = type(sessionAttr)
+            		print("Type is: %s" % my_type)
+            		print("Session attr is: %s" % sessionAttr)
+        	else:
+            		print("Date: %s Period %s" % (leaveDate, leavePeriod))
+            		sns = boto3.client('sns')
+            		sns.publish(
+                		TopicArn='arn:aws:sns:us-east-1:815345597136:contactDetails',
+		                Message='Leave application has been submitted for approval. Details are given below:\n\tEmployee Name: %s\n\tFrom: %s\n\tNo of Days:%s' % (USER, str(leaveDate), str(leavePeriod)),
+                		Subject='Leave Application from %s' % USER,
+		                MessageStructure='string',
+                		MessageAttributes={
+                    			'string': {
+		                        'DataType': 'String',
+        		                'StringValue': 'string',
+                			}
+                		}
+            		)
+    			message = "Okay. Leave application has been sent for approval."
+    	return send_response_interactive(message, sessionAttr)
+
+    elif intent == "getState":
         message = handleLight("null", 0)
+
     elif intent == "setState":
         try:
             val = event["request"]["intent"]["slots"]["state"]["value"]
             message = handleLight(val, 1)
         except KeyError:
             message = error_msg
+
     elif intent == "connect":
         try:
             val = event["request"]["intent"]["slots"]["person"]["value"]
@@ -206,4 +267,3 @@ def lambda_handler(event, context):
     else:
         message = error_msg
     return send_response(message)
-
