@@ -6,6 +6,7 @@ import boto3
 import datetime
 import re
 import isodate
+import time
 
 from apiclient import discovery
 from oauth2client import client
@@ -114,8 +115,11 @@ def scheduleCoffeeMakerPeriod(val, tillTime):
     print("tillTime %s" % tillTime)
     return message
 
+def get_sec(time_str):
+    h, m, s = time_str.split(':')
+    return int(h) * 3600 + int(m) * 60 + int(s)
 
-def bookConf(mname, date, stime, etime):
+def bookConf(mname, date, stime, duration):
     print("bookConf meeting")
 
     meeting = {
@@ -129,9 +133,17 @@ def bookConf(mname, date, stime, etime):
 		    'dateTime': '2017-01-23T04:00:00-07:00',
 	    },
     }
+    stime = stime + ':00'
     meeting['summary'] = mname
-    meeting['start']['dateTime'] = date + 'T' + stime + ':00+05:30'
-    meeting['end']['dateTime'] = date + 'T' + etime + ':00+05:30'
+    meeting['start']['dateTime'] = date + 'T' + stime + '+05:30'
+
+    dur = isodate.parse_duration(duration)
+    time_sec = int(dur.total_seconds())
+    start_sec = get_sec(stime)
+    etime = time.strftime("%H:%M:%S", time.gmtime(start_sec + time_sec))
+
+    print('Meeting Start Time: %s, End Time: %s' % (stime, etime))
+    meeting['end']['dateTime'] = date + 'T' + etime + '+05:30'
 
     credentials = client.OAuth2Credentials.from_json(credentials1)
     http = credentials.authorize(httplib2.Http())
@@ -225,13 +237,14 @@ def handleShipments():
 def lambda_handler(event, context):
     leaveDateFound = 0
     leavePeriodFound = 0
-    meetingdate_f = 0
+    meetingdur_f = 0
     meetingstime_f = 0
     sessionAttr = "{}"
     leaveDate = "{}"
     leavePeriod = "{}"
     meetingdate = "{}"
     meetingstime = "{}"
+    meetingdur = "{}"
     print("Function is: ", event["request"]["intent"]["name"])
     intent = event["request"]["intent"]["name"]
     print("Keys: %s" % event.keys())
@@ -309,36 +322,39 @@ def lambda_handler(event, context):
         message = handleShipments()
 
     elif intent == "BookConf":
+	if 'value' in event['request']['intent']['slots']['date']:
+		meetingdate = event['request']['intent']['slots']['date']['value']
+	else:
+		meetingdate = event['session']['attributes']['date']
     	if 'attributes' in event['session']:
-        	if 'date' in event['session']['attributes']:
-            		meetingdate = event['session']['attributes']['date']
-            		meetingdate_f = 1
         	if 'stime' in event['session']['attributes']:
             		meetingstime = event['session']['attributes']['stime']
             		meetingstime_f = 1
+        	if 'duration' in event['session']['attributes']:
+            		meetingdur = event['session']['attributes']['duration']
+            		meetingdur_f = 1
 
-	if meetingdate == "{}":
-        	if 'value' in event['request']['intent']['slots']['date']:
-            		meetingdate = event['request']['intent']['slots']['date']['value']
-            		meetingdate_f = 1
     	if meetingstime == "{}":
         	if 'value' in event['request']['intent']['slots']['stime']:
             		meetingstime = event['request']['intent']['slots']['stime']['value']
             		meetingstime_f = 1
-    	if meetingdate_f == 0:
-        	message = "Okay, on what date"
-        	sessionAttr = '{"intentSequence": "BookConf"}'
+	if meetingdur == "{}":
+        	if 'value' in event['request']['intent']['slots']['duration']:
+            		meetingdur = event['request']['intent']['slots']['duration']['value']
+            		meetingdur_f = 1
+    	if meetingstime_f == 0:
+        	message = "Okay, on what time"
+        	sessionAttr = '{"intentSequence": "BookConf", "date": "%s"}' % meetingdate
     	else:
-        	if meetingstime_f == 0:
-            		message = "And what is start time"
-            		sessionAttr = '{"intentSequence": "BookConf", "date": "%s"}' % meetingdate
+        	if meetingdur_f == 0:
+            		message = "And for what duration"
+            		sessionAttr = '{"intentSequence": "BookConf", "date": "%s", "stime": "%s"}' % (meetingdate, meetingstime)
             		m_type = type(sessionAttr)
             		print("Type is: %s" % m_type)
             		print("Session attr is: %s" % sessionAttr)
         	else:
             		print("Date: %s STime: %s" % (meetingdate, meetingstime))
-            		message = bookConf("meeting", meetingdate, meetingstime, meetingstime)
-    			message = "Okay. Scheduled meeting as per request"
+			message = bookConf("meeting", meetingdate, meetingstime, meetingdur)
     	return send_response_interactive(message, sessionAttr)
 
     elif intent == "schedule":
