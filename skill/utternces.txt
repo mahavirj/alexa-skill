@@ -1,0 +1,34 @@
+getShipments Check if I have any new shipments
+getShipments Check if I have any new parcels
+getShipments Check for parcels
+getShipments Check for shipments
+getState What is the current state
+getState Is the light on
+getState Is the light off
+setState Set the state as {state}
+setState Turn {state} light
+connect Contact {person}
+connect Please contact {person}
+connect Connect {person}
+connect Call {person}
+manageInventory {item} is out of stock
+manageInventory Out of {item}
+manageInventory No {item}
+manageInventory Out of {item}
+manageInventory To fill {item}
+manageInventory To refill {item}
+manageInventory To fill up {item}
+BookConf To schedule {meeting} for {date} {stime} to {etime}
+BookConf To add {meeting} for {date} {stime} to {etime}
+BookConf book {meeting} for {date} {stime} to {etime}
+leaveApply Apply for leave
+leaveApply {leaveDate}
+leaveApply {leavePeriod} day
+leaveApply {leavePeriod} days
+leaveApply Apply for leave {leaveDate}
+leaveApply Apply for leave for {leaveDate}
+leaveApply Apply for leave from {leaveDate} for {leavePeriod}
+schedule keep coffee maker {state} from {fromTime} to {toTime}
+schedule keep coffee maker {state} for {duration}
+schedule keep coffee maker {state} till {tillTime}
+

@@ -1,0 +1,81 @@
+{
+  "intents": [
+     { "intent": "AMAZON.HelpIntent", "slots": [] },
+     { "intent": "AMAZON.StopIntent", "slots": [] },
+     { "intent": "AMAZON.RepeatIntent", "slots": [] },
+     { "intent": "AMAZON.CancelIntent", "slots": [] },
+     { "intent": "AMAZON.YesIntent", "slots": [] },
+     { "intent": "AMAZON.NoIntent", "slots": [] },
+     { "intent": "getState", "slots": [] },
+     { "intent": "getShipments", "slots": [] },
+     {
+      "intent": "setState",
+      "slots": [
+        {
+          "name": "state",
+          "type": "LIST_OF_STATES"
+        }
+      ]
+     },
+     {
+      "intent": "connect",
+      "slots": [
+        {
+          "name": "person",
+          "type": "LIST_OF_PEOPLE"
+        }
+      ]
+     },
+     {
+      "intent": "manageInventory",
+      "slots": [
+        {
+          "name": "item",
+          "type": "LIST_OF_ITEMS"
+        }
+      ]
+     },
+    {
+    "intent": "BookConf",
+      "slots": [{"name":"meeting", "type": "LIST_OF_MEETINGS"},{ "name": "date", "type": "AMAZON.DATE" },{"name": "stime", "type":"AMAZON.TIME"},{"name": "etime", "type":"AMAZON.TIME"}]
+     },
+    {
+     "intent": "leaveApply",
+      "slots": [
+        {
+          "name": "leaveDate",
+          "type": "AMAZON.DATE"
+        },
+        {
+          "name": "leavePeriod",
+          "type": "AMAZON.NUMBER"
+        }
+      ]
+     },{
+       "intent": "schedule",
+       "slots":[
+         {
+           "name": "duration",
+           "type": "AMAZON.DURATION"
+         },
+         {
+           "name": "fromTime",
+           "type": "AMAZON.TIME"
+         },
+         {
+           "name": "toTime",
+           "type": "AMAZON.TIME"
+         },
+         {
+           "name": "tillTime",
+           "type": "AMAZON.TIME"
+         },
+         {
+           "name": "state",
+           "type": "LIST_OF_STATES"
+         }
+ 	   ]
+     }
+  ]
+}
+
