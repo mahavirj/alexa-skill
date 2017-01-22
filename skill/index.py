@@ -66,8 +66,15 @@ def send_response(message):
     }
 
 def scheduleCoffeeMakerDur(val, duration):
-    # TODO Get current status first if busy or idle
     client = boto3.client('iot-data', region_name='us-east-1')
+
+    # Check busy status of coffee maker
+    client.get_thing_shadow(thingName = 'coffee_maker')
+    body = json.loads(response["payload"].read())
+    status = body["state"]["reported"]["status"]
+    if status == "busy":
+        return 'Coffee maker is busy right now. Please try after some time'
+
     dur_in_secs = duration["value"]
     matchObj = re.match(r'PT([0-9]+)([a-zA-Z]+)', dur_in_secs, re.M|re.I)
     print("%s %s" % (matchObj.group(1), matchObj.group(2)))
@@ -92,11 +99,11 @@ def scheduleCoffeeMakerDur(val, duration):
         else:
             timeUnit = "Hour"
     dur_in_secs = int(timeNo) * int(multiplier)
-    data = '{"state": {"desired": {"state": "%s","duration": %d,"status": "busy","fromTime": 0,"toTime": 0,"tillTime": 0}}}' %(val, int(dur_in_secs))
+    data = '{"state": {"desired": {"state":"%s","duration":%d,"status":"busy","from-to":"0-0","tillTime":0}}}' %(val, int(dur_in_secs))
     client.update_thing_shadow(thingName = 'coffee_maker', payload = data)
     message = 'keeping coffee maker %s for %s %s' % (val, timeNo, timeUnit)
     return message
-    
+
 def scheduleCoffeeMakerSpan(val, fromTime, toTime):
     print("fromTime %s and toTime %s" % (fromTime, toTime))
     message = 'Will keep coffee maker %s for specified time period' % val
