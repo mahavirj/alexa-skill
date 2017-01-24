@@ -70,7 +70,7 @@ def scheduleCoffeeMakerDur(val, duration):
     client = boto3.client('iot-data', region_name='us-east-1')
 
     # Check busy status of coffee maker
-    client.get_thing_shadow(thingName = 'coffee_maker')
+    response = client.get_thing_shadow(thingName = 'coffee_maker')
     body = json.loads(response["payload"].read())
     status = body["state"]["reported"]["status"]
     if status == "busy":
@@ -100,9 +100,10 @@ def scheduleCoffeeMakerDur(val, duration):
         else:
             timeUnit = "Hour"
     dur_in_secs = int(timeNo) * int(multiplier)
-    data = '{"state": {"desired": {"state":"%s","duration":%d,"status":"busy","from-to":"0-0","tillTime":0}}}' %(val, int(dur_in_secs))
+    data = '{"state": {"desired": {"state":"%s","duration":%d,"status":"busy","from-to":"0-0"}}}' %(val, int(dur_in_secs))
     client.update_thing_shadow(thingName = 'coffee_maker', payload = data)
     message = 'keeping coffee maker %s for %s %s' % (val, timeNo, timeUnit)
+
     return message
 
 def scheduleCoffeeMakerSpan(val, fromTime, toTime):
